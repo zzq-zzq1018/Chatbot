@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>智能法律咨询机器人 - 专业法律助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Microsoft YaHei', Roboto, sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f0f4ff 0%, #f9fafc 100%);
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sticky-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: linear-gradient(135deg, #f0f4ff 0%, #f9fafc 100%);
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            padding: 12px 0 10px 0;
+            border-bottom: 1px solid rgba(22, 93, 255, 0.1);
+        }
+
+        .header-content {
+            max-width: 100%;
+            margin: 0 24px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #165DFF, #4b7eff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.3px;
+            margin-bottom: 8px;
+        }
+
+        .mode-switch {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 4px;
+        }
+
+        .mode-btn {
+            padding: 6px 32px;
+            border-radius: 40px;
+            border: 1.5px solid #165DFF;
+            background: white;
+            color: #165DFF;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .mode-btn.active {
+            background: #165DFF;
+            color: white;
+            box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+        }
+
+        .app-main {
+            flex: 1;
+            margin-top: 102px;
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .two-col-layout {
+            width: 100%;
+            margin: 0;
+            display: flex;
+            gap: 0;
+            height: 100%;
+            min-height: 0;
+        }
+
+        /* 左侧历史记录区域 */
+        .history-sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: #ffffff;
+            border-radius: 0 28px 28px 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+            padding: 24px 16px;
+            border: 1px solid rgba(22, 93, 255, 0.1);
+            border-left: none;
+            overflow-y: auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-header {
+            font-size: 18px;
+            font-weight: 700;
+            color: #165DFF;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #f0f4ff;
+        }
+        .history-header::before {
+            content: "";
+            display: block;
+            width: 4px;
+            height: 20px;
+            background: #165DFF;
+            border-radius: 2px;
+        }
+        .history-list {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .history-item {
+            background: #f8faff;
+            border-radius: 16px;
+            padding: 14px;
+            border: 1px solid #e8f4f8;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .history-item:hover {
+            transform: translateX(3px);
+            border-color: #165DFF;
+            box-shadow: 0 4px 12px rgba(22,93,255,0.1);
+        }
+        .history-title {
+            font-weight: 700;
+            font-size: 13px;
+            color: #1e293b;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-time {
+            font-size: 10px;
+            color: #7c8ba0;
+            font-weight: normal;
+        }
+        .history-preview {
+            font-size: 12px;
+            color: #4b5568;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .clear-history-btn {
+            margin-top: 20px;
+            background: #f1f5f9;
+            border: none;
+            padding: 10px;
+            border-radius: 30px;
+            color: #ef4444;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .clear-history-btn:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        /* 中间主区域 */
+        .main-center {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            padding: 0 12px;
+        }
+
+        .pro-panel {
+            background: white;
+            border-radius: 24px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.03);
+            border: 1px solid #eef2ff;
+            flex-shrink: 0;
+        }
+
+        .pro-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #c7000b;
+            margin-bottom: 14px;
+            border-left: 4px solid #c7000b;
+            padding-left: 12px;
+        }
+
+        .pro-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .pro-item {
+            padding: 10px 12px;
+            background: #f8faff;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border-left: 3px solid #165DFF;
+            transition: 0.1s;
+        }
+
+        .pro-item:hover {
+            background: #eef3ff;
+            transform: translateX(3px);
+        }
+
+        /* 聊天区域 */
+        .chat-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            margin-bottom: 0;
+        }
+        .chat-box {
+            flex: 1;
+            padding: 20px 18px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .input-bar {
+            display: flex;
+            gap: 12px;
+            padding: 16px 18px;
+            background: white;
+            border-top: 1px solid #edf2f7;
+            flex-shrink: 0;
+        }
+        input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 1px solid #dce3ec;
+            border-radius: 60px;
+            outline: none;
+            font-size: 14px;
+            background: #fefefe;
+        }
+        input:focus {
+            border-color: #165DFF;
+            box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.2);
+        }
+        button {
+            padding: 0 28px;
+            border: none;
+            border-radius: 60px;
+            background: #165DFF;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #0e4ad0;
+            transform: scale(0.97);
+        }
+        .new-btn {
+            background: #6c7a91;
+        }
+        .new-btn:hover {
+            background: #4a5a78;
+        }
+        .doc-btn {
+            background: #854d0e;
+        }
+        .doc-btn:hover {
+            background: #713f12;
+        }
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            color: #8c9bb0;
+            padding: 8px 0 12px;
+            background: transparent;
+        }
+
+        .msg {
+            max-width: 85%;
+            padding: 10px 18px;
+            border-radius: 24px;
+            margin: 6px 0;
+            line-height: 1.6;
+            word-break: break-word;
+            font-size: 14px;
+        }
+        .msg.bot p, .msg.bot div {
+            margin: 4px 0;
+        }
+        .msg.bot br {
+            display: block;
+            margin: 4px 0;
+        }
+        .user {
+            background: #165DFF;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 6px;
+        }
+        .bot {
+            background: #f1f3f9;
+            color: #1e2a3a;
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+        }
+        /* 领域标签样式 */
+        .domain-tag {
+            display: block;
+            font-size: 16px;
+            font-weight: 600;
+            color: #165DFF;
+            background: transparent;
+            padding: 0;
+            margin-bottom: 8px;
+            letter-spacing: 0px;
+            border-left: none;
+            padding-left: 0;
+        }
+        /* 等待提示样式 */
+        .loading-indicator {
+            background: #eef3ff;
+            color: #165DFF;
+            padding: 8px 18px;
+            border-radius: 28px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            align-self: flex-start;
+            border: 1px solid #c7dcff;
+        }
+        .dot-floating {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #165DFF;
+            animation: dotPulse 1.2s infinite ease-in-out;
+        }
+        .dot-floating:nth-child(2) { animation-delay: 0.2s; }
+        .dot-floating:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes dotPulse {
+            0%, 60%, 100% { transform: scale(0.8); opacity: 0.4; }
+            30% { transform: scale(1.2); opacity: 1; }
+        }
+        .followup-container {
+            align-self: flex-start;
+            max-width: 85%;
+            margin-top: 4px;
+            margin-bottom: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .followup-btn {
+            background: #eef3ff;
+            color: #165DFF;
+            border: 1px solid #bdd4ff;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .followup-btn:hover {
+            background: #165DFF;
+            color: white;
+            transform: translateY(-1px);
+        }
+        .split {
+            text-align: center;
+            color: #9aa8bf;
+            margin: 12px 0;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .split::before, .split::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        /* 文书生成面板 */
+        .doc-panel {
+            background: #fefce8;
+            border-radius: 20px;
+            padding: 16px;
+            margin-top: 12px;
+            flex-shrink: 0;
+            border: 1px solid #eab308;
+        }
+        .doc-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .doc-panel-header span {
+            font-weight: 700;
+            color: #854d0e;
+        }
+        .close-doc-btn {
+            background: none;
+            color: #666;
+            padding: 0;
+            font-size: 20px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            line-height: 1;
+        }
+        .doc-select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid #eab308;
+            margin-bottom: 12px;
+            background: white;
+        }
+        .doc-btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        .generate-doc-btn {
+            background: #854d0e;
+            flex: 1;
+        }
+        .export-doc-btn {
+            background: #165DFF;
+            flex: 1;
+        }
+        .export-doc-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .doc-preview {
+            margin-top: 12px;
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            display: none;
+            border: 1px solid #e5e7eb;
+        }
+
+        /* 右侧面板 */
+        .right-panel {
+            width: 360px;
+            flex-shrink: 0;
+            background: #ffffff;
+            border-radius: 28px 0 0 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+            padding: 20px 16px;
+            border: 1px solid rgba(22, 93, 255, 0.1);
+            border-right: none;
+            overflow-y: auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eef2ff;
+            padding-bottom: 8px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 8px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #5b6e8c;
+            cursor: pointer;
+            border-radius: 40px;
+            transition: 0.2s;
+        }
+        .tab-btn.active {
+            background: #165DFF;
+            color: white;
+            box-shadow: 0 2px 8px rgba(22,93,255,0.2);
+        }
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .tab-pane {
+            display: none;
+            animation: fade 0.2s ease;
+        }
+        .tab-pane.active-pane {
+            display: block;
+        }
+        @keyframes fade {
+            from { opacity: 0; transform: translateY(5px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .case-category {
+            margin-bottom: 24px;
+        }
+        .case-category h4 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #2c3e66;
+            margin: 12px 0 10px 0;
+            padding-left: 8px;
+            border-left: 3px solid #165DFF;
+        }
+        .case-item {
+            background: #f8faff;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #eef2ff;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        .case-item:hover {
+            border-color: #165DFF;
+            background: #f0f6ff;
+            transform: translateX(3px);
+        }
+        .case-title {
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 6px;
+            color: #1e293b;
+        }
+        .case-desc {
+            font-size: 12px;
+            color: #4a5568;
+            line-height: 1.4;
+        }
+        .video-box {
+            width: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 16px;
+            background: #f8fafc;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e8f4f8;
+            transition: 0.2s;
+        }
+        .video-box:hover {
+            transform: translateY(-3px);
+            border-color: #165DFF;
+        }
+        .video-box iframe {
+            width: 100%;
+            height: 180px;
+            border: none;
+            display: block;
+        }
+
+        .history-sidebar::-webkit-scrollbar, .right-panel::-webkit-scrollbar, .chat-box::-webkit-scrollbar {
+            width: 6px;
+        }
+        .history-sidebar::-webkit-scrollbar-track, .right-panel::-webkit-scrollbar-track {
+            background: #f0f4ff;
+            border-radius: 10px;
+        }
+        .history-sidebar::-webkit-scrollbar-thumb, .right-panel::-webkit-scrollbar-thumb {
+            background: #c1d3ff;
+            border-radius: 10px;
+        }
+
+        /* ========== 移动端适配样式 ========== */
+        /* 移动端底部导航栏 */
+        .mobile-bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #eef2ff;
+            padding: 8px 20px;
+            z-index: 1000;
+            justify-content: space-around;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        .mobile-nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-size: 12px;
+            color: #6c7a91;
+        }
+
+        .mobile-nav-btn.active {
+            color: #165DFF;
+            background: #eef3ff;
+        }
+
+        .mobile-nav-btn span:first-child {
+            font-size: 20px;
+        }
+
+        /* 移动端浮动菜单按钮（替代原来的汉堡菜单） */
+        .mobile-fab {
+            display: none;
+            position: fixed;
+            right: 16px;
+            bottom: 80px;
+            width: 50px;
+            height: 50px;
+            background: #165DFF;
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(22,93,255,0.4);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 移动端抽屉面板 */
+        .mobile-drawer {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 85%;
+            max-width: 320px;
+            height: 100%;
+            background: white;
+            z-index: 2000;
+            transition: left 0.3s ease;
+            box-shadow: 2px 0 20px rgba(0,0,0,0.15);
+            overflow-y: auto;
+        }
+
+        .mobile-drawer.open {
+            left: 0;
+        }
+
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1999;
+            display: none;
+        }
+
+        .drawer-overlay.open {
+            display: block;
+        }
+
+        .drawer-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #165DFF, #4b7eff);
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .drawer-content {
+            padding: 16px;
+        }
+
+        .drawer-section {
+            margin-bottom: 24px;
+        }
+
+        .drawer-section-title {
+            font-weight: 700;
+            color: #165DFF;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f4ff;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .drawer-section-title .toggle-icon {
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+
+        .drawer-section-title.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .drawer-section-content {
+            max-height: 500px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+
+        .drawer-section-content.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .mobile-case-item, .mobile-history-item {
+            background: #f8faff;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .mobile-case-title {
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .mobile-case-desc {
+            font-size: 11px;
+            color: #6c7a91;
+        }
+
+        .mobile-history-preview {
+            font-size: 12px;
+            color: #4b5568;
+        }
+
+        @media (max-width: 768px) {
+            /* 隐藏桌面端侧边栏 */
+            .history-sidebar, .right-panel {
+                display: none;
+            }
+
+            /* 显示移动端组件 */
+            .mobile-bottom-nav, .mobile-fab {
+                display: flex;
+            }
+
+            /* 调整主区域底部留出导航栏空间 */
+            .app-main {
+                margin-bottom: 60px;
+            }
+
+            .main-center {
+                padding: 0 8px;
+            }
+
+            .sticky-header .header-content {
+                margin: 0 16px;
+            }
+
+            .title {
+                font-size: 18px;
+            }
+
+            .mode-btn {
+                padding: 4px 12px;
+                font-size: 11px;
+            }
+
+            .input-bar {
+                padding: 10px 12px;
+                gap: 6px;
+            }
+
+            input {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+
+            button {
+                padding: 0 14px;
+                font-size: 12px;
+            }
+
+            .msg {
+                max-width: 92%;
+                font-size: 13px;
+                padding: 8px 12px;
+            }
+
+            .domain-tag {
+                font-size: 12px;
+            }
+
+            .followup-btn {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+
+            .pro-item {
+                font-size: 11px;
+                padding: 8px;
+            }
+
+            .pro-grid {
+                gap: 8px;
+            }
+
+            .pro-panel {
+                padding: 12px;
+            }
+
+            .pro-title {
+                font-size: 14px;
+            }
+
+            .doc-panel {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 移动端底部导航栏 -->
+    <div class="mobile-bottom-nav" id="mobileBottomNav">
+        <button class="mobile-nav-btn" data-drawer="history">
+            <span>📋</span>
+            <span>历史</span>
+        </button>
+        <button class="mobile-nav-btn" data-drawer="cases">
+            <span>📚</span>
+            <span>案例</span>
+        </button>
+        <button class="mobile-nav-btn" data-drawer="videos">
+            <span>🎥</span>
+            <span>视频</span>
+        </button>
+    </div>
+
+
+    <!-- 移动端抽屉面板 -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <div class="mobile-drawer" id="mobileDrawer">
+        <div class="drawer-header">
+            📋 更多内容
+        </div>
+        <div class="drawer-content">
+            <!-- 历史记录区域 -->
+            <div class="drawer-section" id="drawerHistorySection">
+                <div class="drawer-section-title" data-section="history">
+                    <span>📋 对话历史</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="drawer-section-content" id="drawerHistoryList">
+                    <div style="text-align:center; color:#94a3b8; padding:20px;">加载中...</div>
+                </div>
+            </div>
+
+            <!-- 典型案例库区域 -->
+            <div class="drawer-section" id="drawerCasesSection">
+                <div class="drawer-section-title" data-section="cases">
+                    <span>📚 典型案例库</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="drawer-section-content" id="drawerCasesList">
+                    <!-- 动态填充案例 -->
+                </div>
+            </div>
+
+            <!-- 普法视频区域 -->
+            <div class="drawer-section" id="drawerVideosSection">
+                <div class="drawer-section-title" data-section="videos">
+                    <span>🎥 普法视频</span>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="drawer-section-content" id="drawerVideosList">
+                    <!-- 动态填充视频 -->
+                </div>
+            </div>
+
+            <button class="clear-history-btn" id="mobileDrawerClearBtn" style="width:100%;">🗑️ 清空当前模式历史</button>
+        </div>
+    </div>
+
+    <div class="sticky-header">
+        <div class="header-content">
+            <div class="title">⚖️ 法律咨询实时机器人</div>
+            <div class="mode-switch">
+                <button class="mode-btn active" id="normalModeBtn">普通模式</button>
+                <button class="mode-btn" id="proModeBtn">专业模式</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-main">
+        <div class="two-col-layout">
+            <!-- 左侧历史记录区域（桌面端显示） -->
+            <div class="history-sidebar">
+                <div class="history-header" id="historyHeader">📋 对话历史记录 <span id="modeTag" style="font-size:12px; background:#eef3ff; padding:2px 8px; border-radius:20px; margin-left:8px;">普通模式</span></div>
+                <div class="history-list" id="historyListContainer">
+                    <div style="text-align:center; color:#94a3b8; font-size:13px; padding:20px 0;">暂无历史记录</div>
+                </div>
+                <button class="clear-history-btn" id="clearAllHistoryBtn">🗑️ 清空当前模式历史</button>
+            </div>
+
+            <!-- 中央聊天区域 -->
+            <div class="main-center">
+                <div class="pro-panel" id="proPanel" style="display: none;">
+                    <div class="pro-title">⚖ 法律从业者专业工具箱</div>
+                    <div class="pro-grid">
+                        <div class="pro-item" data-text="民间借贷司法解释要点及利率保护上限">📜 民间借贷司法解释要点</div>
+                        <div class="pro-item" data-text="民法典合同编重点条文：违约责任、情势变更">📜 民法典合同编重点条文</div>
+                        <div class="pro-item" data-text="劳动仲裁流程全指引：时效、证据清单、管辖">📜 劳动仲裁流程全指引</div>
+                        <div class="pro-item" data-text="刑事案件证据标准：非法证据排除规则">📜 刑事案件证据标准</div>
+                    </div>
+                </div>
+
+                <div class="chat-wrapper">
+                    <div class="chat-box" id="chatBox">
+                        <div class="msg bot">👋 您好，我是智能法律助手，请问您需要咨询哪方面法律问题？</div>
+                    </div>
+                    <div class="input-bar">
+                        <button class="new-btn" id="newChatBtn">➕ 新对话</button>
+                        <button class="doc-btn" id="openDocBtn"> 文书</button>
+                        <input id="userInput" placeholder="输入法律问题..." autocomplete="off">
+                        <button id="sendBtn">发送 ➤</button>
+                    </div>
+                    <div class="footer">智能法律咨询平台 · 回答仅供参考，复杂案件请咨询执业律师</div>
+                </div>
+
+                <div class="doc-panel" id="docPanel" style="display: none;">
+                    <div class="doc-panel-header">
+                        <span>📄智能生成文书</span>
+                        <button class="close-doc-btn" id="closeDocPanel">✕</button>
+                    </div>
+                    <select class="doc-select" id="docTypeSelect">
+                        <option value="complaint">民事起诉状</option>
+                        <option value="defense">民事答辩状</option>
+                        <option value="labor_application">劳动仲裁申请书</option>
+                        <option value="contract_clause">合同条款建议</option>
+                    </select>
+                    <div class="doc-btn-group">
+                        <button class="generate-doc-btn" id="generateDocBtn">根据对话生成文书</button>
+                        <button class="export-doc-btn" id="exportDocBtn" disabled> 导出文档</button>
+                    </div>
+                    <div class="doc-preview" id="generatedDocPreview"></div>
+                </div>
+            </div>
+
+            <!-- 右侧面板（桌面端显示） -->
+            <div class="right-panel">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="cases"> 典型案例库</button>
+                    <button class="tab-btn" data-tab="videos"> 普法视频</button>
+                </div>
+                <div class="tab-content">
+                    <div class="tab-pane active-pane" id="casesPane">
+                        <div class="case-category"><h4> 民事纠纷</h4>
+                            <div class="case-item" data-question="民间借贷欠款8万未还，有借条转账流水，诉讼时效3年怎么办？"><div class="case-title"> 民间借贷欠款纠纷</div><div class="case-desc">张某借款8万元未还，出借人凭借条、转账流水起诉，法院判决全额还款并支付利息。诉讼时效3年。</div></div>
+                            <div class="case-item" data-question="离婚财产分割和抚养权如何判决？婚后房产怎么分？"><div class="case-title"> 离婚财产分割与抚养权</div><div class="case-desc">夫妻婚后房产均等分割，2周岁以下子女一般随母亲生活，父亲支付抚养费。</div></div>
+                            <div class="case-item" data-question="电动车闯红灯撞伤行人，交强险如何赔付？赔偿项目有哪些？"><div class="case-title"> 交通事故人身损害赔偿</div><div class="case-desc">电动车闯红灯全责，交强险先行赔付医疗费、误工费、精神损害抚慰金。</div></div>
+                        </div>
+                        <div class="case-category"><h4> 劳动仲裁维权</h4>
+                            <div class="case-item" data-question="公司无故拖欠3个月工资，如何申请劳动仲裁索要经济补偿金？"><div class="case-title"> 拖欠工资+经济补偿</div><div class="case-desc">企业无故拖欠薪资，仲裁裁决补发工资并支付经济补偿(N)。仲裁时效一年。</div></div>
+                            <div class="case-item" data-question="入职半年未签劳动合同，如何主张双倍工资差额？"><div class="case-title"> 未签订劳动合同双倍工资</div><div class="case-desc">未签劳动合同双倍工资差额赔偿，最多支持11个月。</div></div>
+                            <div class="case-item" data-question="上班途中遭遇车祸如何认定工伤？公司未缴社保如何索赔？"><div class="case-title"> 工伤认定与伤残赔偿</div><div class="case-desc">建筑工人上班途中车祸认定为工伤，公司未缴社保，赔付医疗费+伤残补助金。</div></div>
+                        </div>
+                        <div class="case-category"><h4> 刑事法律相关</h4>
+                            <div class="case-item" data-question="网络电信诈骗30万，立案后如何追回损失？量刑标准？"><div class="case-title"> 网络电信诈骗案</div><div class="case-desc">诈骗数额巨大，法定刑三年以上十年以下，责令退赔受害人损失。</div></div>
+                            <div class="case-item" data-question="多次盗窃1.2万元构成盗窃罪吗？会判几年？"><div class="case-title"> 多次盗窃入刑案</div><div class="case-desc">二年内盗窃三次以上为"多次盗窃"，判处有期徒刑并处罚金。</div></div>
+                            <div class="case-item" data-question="故意伤害致轻伤二级，取得谅解还能不起诉吗？"><div class="case-title"> 故意伤害刑事和解</div><div class="case-desc">积极赔偿取得谅解，检察院可相对不起诉，适用刑事和解程序。</div></div>
+                        </div>
+                    </div>
+                    <div class="tab-pane" id="videosPane">
+                        <div class="video-box"><iframe src="https://player.bilibili.com/player.html?bvid=BV1J3411J7wA&page=1&high_quality=1&autoplay=0&muted=1" scrolling="no" allow="autoplay"></iframe></div>
+                        <div class="video-box"><iframe src="https://player.bilibili.com/player.html?bvid=BV1wv4y127mK&page=1&high_quality=1&autoplay=0&muted=1" scrolling="no" allow="autoplay"></iframe></div>
+                        <div class="video-box"><iframe src="https://player.bilibili.com/player.html?bvid=BV1SH4y1D7mL&page=1&high_quality=1&autoplay=0&muted=1" scrolling="no" allow="autoplay"></iframe></div>
+                        <div class="video-box"><iframe src="https://player.bilibili.com/player.html?bvid=BV1x341137ZY&page=1&high_quality=1&autoplay=0&muted=1" scrolling="no" allow="autoplay"></iframe></div>
+                        <div class="video-box"><iframe src="https://player.bilibili.com/player.html?bvid=BV1xC4y197PM&page=1&high_quality=1&autoplay=0&muted=1" scrolling="no" allow="autoplay"></iframe></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 移动端抽屉逻辑 ==========
+        const mobileFabBtn = document.getElementById('mobileFabBtn');
+        const mobileDrawer = document.getElementById('mobileDrawer');
+        const drawerOverlay = document.getElementById('drawerOverlay');
+        let currentDrawerTab = 'history';
+
+        function toggleDrawer(open) {
+            if (open === undefined) {
+                mobileDrawer.classList.toggle('open');
+                drawerOverlay.classList.toggle('open');
+            } else if (open) {
+                mobileDrawer.classList.add('open');
+                drawerOverlay.classList.add('open');
+            } else {
+                mobileDrawer.classList.remove('open');
+                drawerOverlay.classList.remove('open');
+            }
+        }
+
+        if (mobileFabBtn) {
+            mobileFabBtn.addEventListener('click', () => toggleDrawer());
+        }
+        if (drawerOverlay) {
+            drawerOverlay.addEventListener('click', () => toggleDrawer(false));
+        }
+
+        // 抽屉内折叠/展开功能
+        function initDrawerCollapse() {
+            document.querySelectorAll('.drawer-section-title').forEach(title => {
+                title.addEventListener('click', () => {
+                    const content = title.parentElement.querySelector('.drawer-section-content');
+                    title.classList.toggle('collapsed');
+                    content.classList.toggle('collapsed');
+                });
+            });
+        }
+
+        // 填充移动端案例列表
+        function fillMobileCases() {
+            const casesContainer = document.getElementById('drawerCasesList');
+            if (!casesContainer) return;
+
+            const casesData = [
+                { category: "民事纠纷", items: [
+                    { title: "📌 民间借贷欠款纠纷", desc: "张某借款8万元未还，出借人凭借条、转账流水起诉，法院判决全额还款并支付利息。诉讼时效3年。", question: "民间借贷欠款8万未还，有借条转账流水，诉讼时效3年怎么办？" },
+                    { title: "💔 离婚财产分割与抚养权", desc: "夫妻婚后房产均等分割，2周岁以下子女一般随母亲生活，父亲支付抚养费。", question: "离婚财产分割和抚养权如何判决？婚后房产怎么分？" },
+                    { title: "🚗 交通事故人身损害赔偿", desc: "电动车闯红灯全责，交强险先行赔付医疗费、误工费、精神损害抚慰金。", question: "电动车闯红灯撞伤行人，交强险如何赔付？赔偿项目有哪些？" }
+                ] },
+                { category: "劳动仲裁维权", items: [
+                    { title: "💰 拖欠工资+经济补偿", desc: "企业无故拖欠薪资，仲裁裁决补发工资并支付经济补偿(N)。仲裁时效一年。", question: "公司无故拖欠3个月工资，如何申请劳动仲裁索要经济补偿金？" },
+                    { title: "📄 未签订劳动合同双倍工资", desc: "未签劳动合同双倍工资差额赔偿，最多支持11个月。", question: "入职半年未签劳动合同，如何主张双倍工资差额？" },
+                    { title: "🩺 工伤认定与伤残赔偿", desc: "建筑工人上班途中车祸认定为工伤，公司未缴社保，赔付医疗费+伤残补助金。", question: "上班途中遭遇车祸如何认定工伤？公司未缴社保如何索赔？" }
+                ] },
+                { category: "刑事法律相关", items: [
+                    { title: "📱 网络电信诈骗案", desc: "诈骗数额巨大，法定刑三年以上十年以下，责令退赔受害人损失。", question: "网络电信诈骗30万，立案后如何追回损失？量刑标准？" },
+                    { title: "🕵️ 多次盗窃入刑案", desc: "二年内盗窃三次以上为'多次盗窃'，判处有期徒刑并处罚金。", question: "多次盗窃1.2万元构成盗窃罪吗？会判几年？" },
+                    { title: "⚖️ 故意伤害刑事和解", desc: "积极赔偿取得谅解，检察院可相对不起诉，适用刑事和解程序。", question: "故意伤害致轻伤二级，取得谅解还能不起诉吗？" }
+                ] }
+            ];
+
+            let html = '';
+            casesData.forEach(cat => {
+                html += `<div style="margin-bottom: 16px;"><div style="font-weight:700; color:#165DFF; margin-bottom: 8px;">${cat.category}</div>`;
+                cat.items.forEach(item => {
+                    html += `<div class="mobile-case-item" data-question="${item.question.replace(/"/g, '&quot;')}">
+                        <div class="mobile-case-title">${item.title}</div>
+                        <div class="mobile-case-desc">${item.desc}</div>
+                    </div>`;
+                });
+                html += `</div>`;
+            });
+            casesContainer.innerHTML = html;
+
+            // 绑定点击事件
+            casesContainer.querySelectorAll('.mobile-case-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const q = el.getAttribute('data-question');
+                    if (q) {
+                        userInput.value = q;
+                        sendMessage();
+                        toggleDrawer(false);
+                    }
+                });
+            });
+        }
+
+        // 填充移动端视频列表
+        function fillMobileVideos() {
+            const videosContainer = document.getElementById('drawerVideosList');
+            if (!videosContainer) return;
+
+            const videoBvids = ['BV1J3411J7wA', 'BV1wv4y127mK', 'BV1SH4y1D7mL', 'BV1x341137ZY', 'BV1xC4y197PM'];
+            let html = '';
+            videoBvids.forEach(bvid => {
+                html += `<div class="video-box" style="margin-bottom: 12px;">
+                    <iframe src="https://player.bilibili.com/player.html?bvid=${bvid}&page=1&high_quality=1&autoplay=0&muted=1" scrolling="no" allow="autoplay" style="height: 160px;"></iframe>
+                </div>`;
+            });
+            videosContainer.innerHTML = html;
+        }
+
+        // 填充移动端历史记录
+        function fillMobileHistory() {
+            const historyContainer = document.getElementById('drawerHistoryList');
+            if (!historyContainer) return;
+
+            const store = getCurrentHistoryStore();
+            const sessions = Object.values(store).sort((a,b)=> new Date(b.createTime) - new Date(a.createTime));
+
+            if (sessions.length === 0) {
+                historyContainer.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px;">暂无历史记录</div>';
+                return;
+            }
+
+            let html = '';
+            sessions.forEach(sess => {
+                const preview = sess.title || (sess.messages.find(m=>m.role==='user')?.content?.substring(0,35) || '无内容');
+                html += `<div class="mobile-history-item" data-session-id="${sess.id}">
+                    <div class="mobile-case-title" style="font-size:13px;">💬 ${preview}</div>
+                    <div class="mobile-history-preview">${sess.createTime || ''}</div>
+                </div>`;
+            });
+            historyContainer.innerHTML = html;
+
+            historyContainer.querySelectorAll('.mobile-history-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const sessionId = el.getAttribute('data-session-id');
+                    if (sessionId && currentSessionId !== sessionId) {
+                        saveCurrentSessionToStore();
+                        currentSessionId = sessionId;
+                        renderCurrentSession();
+                        saveAllToLocalStorage();
+                        renderHistoryList();
+                        fillMobileHistory();
+                        toggleDrawer(false);
+                    }
+                });
+            });
+        }
+
+        // 移动端底部导航切换（打开抽屉并切换到对应tab）
+        function initMobileBottomNav() {
+            const navBtns = document.querySelectorAll('.mobile-nav-btn');
+            navBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const drawerType = btn.getAttribute('data-drawer');
+                    if (drawerType === 'history') {
+                        currentDrawerTab = 'history';
+                    } else if (drawerType === 'cases') {
+                        currentDrawerTab = 'cases';
+                    } else if (drawerType === 'videos') {
+                        currentDrawerTab = 'videos';
+                    }
+                    // 滚动到对应区域
+                    const targetSection = document.getElementById(`drawer${drawerType.charAt(0).toUpperCase() + drawerType.slice(1)}Section`);
+                    if (targetSection) {
+                        targetSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                    toggleDrawer(true);
+                });
+            });
+        }
+
+        // 历史管理（隔离普通/专业模式）
+        let normalHistorySessions = {};
+        let proHistorySessions = {};
+        let currentMode = "normal";
+        let currentSessionId = null;
+
+        let currentGeneratedDoc = "";
+        let currentFilename = "";
+
+        function getCurrentHistoryStore() { return currentMode === "pro" ? proHistorySessions : normalHistorySessions; }
+
+        function saveAllToLocalStorage() {
+            localStorage.setItem('legalChatHistory_normal', JSON.stringify(normalHistorySessions));
+            localStorage.setItem('legalChatHistory_pro', JSON.stringify(proHistorySessions));
+            localStorage.setItem('legal_current_mode', currentMode);
+            if (currentSessionId) localStorage.setItem(`legal_last_session_${currentMode}`, currentSessionId);
+        }
+
+        function loadAllFromStorage() {
+            const storedNormal = localStorage.getItem('legalChatHistory_normal');
+            const storedPro = localStorage.getItem('legalChatHistory_pro');
+            if (storedNormal) normalHistorySessions = JSON.parse(storedNormal);
+            if (storedPro) proHistorySessions = JSON.parse(storedPro);
+            const savedMode = localStorage.getItem('legal_current_mode');
+            if (savedMode === 'pro' || savedMode === 'normal') currentMode = savedMode; else currentMode = "normal";
+            const store = getCurrentHistoryStore();
+            if (Object.keys(store).length === 0) {
+                const newId = Date.now().toString();
+                store[newId] = { id: newId, title: '新对话', createTime: new Date().toLocaleString(), messages: [{ role: 'bot', content: '👋 您好，我是智能法律助手，请问您需要咨询哪方面法律问题？' }] };
+                currentSessionId = newId;
+            } else {
+                const lastId = localStorage.getItem(`legal_last_session_${currentMode}`);
+                if (lastId && store[lastId]) currentSessionId = lastId; else currentSessionId = Object.keys(store)[0];
+            }
+            saveAllToLocalStorage();
+        }
+
+        function removeAsterisks(text) { return text ? text.replace(/\*/g, '') : text; }
+
+        function getDomainNameFromScene(scene) {
+            if (scene === 'civil') return '民事纠纷';
+            if (scene === 'criminal') return '刑事法律';
+            if (scene === 'labor') return '劳动仲裁';
+            return '法律咨询';
+        }
+
+        function formatBotReplyWithDomain(replyText, scene) {
+            let cleaned = removeAsterisks(replyText);
+            cleaned = cleaned.replace(/(\d+\.\s*)/g, '<br>$1').replace(/(\n)/g, '<br>').replace(/<br><br>/g, '<br>').replace(/[•·]\s*/g, '<br>• ');
+            const domainName = getDomainNameFromScene(scene);
+            const domainTagHtml = `<div class="domain-tag">   ${domainName}</div>`;
+            return domainTagHtml + cleaned;
+        }
+
+        function isWelcomeMessage(content) { return content && content.includes('您好，我是智能法律助手'); }
+
+        function extractFollowupsFromText(content) {
+            if (isWelcomeMessage(content)) return [];
+            const questions = [];
+            const clean = removeAsterisks(content);
+            const regex = /(?:💡你可以继续问|💡专业延伸)[：:]\s*([\s\S]*?)(?=\n---|$)/i;
+            const match = clean.match(regex);
+            if (match) {
+                const qPart = match[1];
+                const lines = qPart.split(/\d+\./);
+                for (let line of lines) { let q = line.trim(); if (q && q.length > 5 && q.length < 100) { if (!q.endsWith('？') && !q.endsWith('?')) q = q + '？'; questions.push(q); } }
+            }
+            if (questions.length === 0 && !isWelcomeMessage(content)) {
+                const qRegex = /([^。？！]*？)/g; let matchQ;
+                while ((matchQ = qRegex.exec(clean)) !== null) { let q = matchQ[1].trim(); if (q.length > 5 && q.length < 60 && !questions.includes(q) && !isWelcomeMessage(q)) questions.push(q); if (questions.length >= 3) break; }
+            }
+            return questions.slice(0, 4);
+        }
+
+        function appendFollowupButtons(questions) {
+            if (!questions || questions.length === 0) return;
+            const container = document.createElement('div'); container.className = 'followup-container';
+            questions.forEach(q => { const btn = document.createElement('button'); btn.className = 'followup-btn'; btn.innerText = q.length > 30 ? q.slice(0, 28) + '…' : q; btn.onclick = () => { userInput.value = q; sendMessage(); }; container.appendChild(btn); });
+            document.getElementById('chatBox').appendChild(container);
+        }
+
+        function renderCurrentSession() {
+            const store = getCurrentHistoryStore();
+            if (!currentSessionId || !store[currentSessionId]) return;
+            const session = store[currentSessionId];
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML = '';
+
+            if (session.messages.length === 0) {
+                const welcomeDiv = document.createElement('div');
+                welcomeDiv.className = 'msg bot';
+                welcomeDiv.innerHTML = '👋 您好，我是智能法律助手，请问您需要咨询哪方面法律问题？';
+                chatBox.appendChild(welcomeDiv);
+            } else {
+                session.messages.forEach((msg) => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `msg ${msg.role}`;
+
+                    if (msg.role === 'bot') {
+                        if (isWelcomeMessage(msg.content)) {
+                            msgDiv.innerHTML = msg.content;
+                        }
+                        else if (msg.formattedHtml) {
+                            msgDiv.innerHTML = msg.formattedHtml;
+                        }
+                        else {
+                            const scene = msg.scene || 'civil';
+                            const formatted = formatBotReplyWithDomain(msg.content, scene);
+                            msgDiv.innerHTML = formatted;
+                            msg.formattedHtml = formatted;
+                            saveAllToLocalStorage();
+                        }
+                    } else {
+                        msgDiv.innerHTML = msg.content.replace(/\n/g, '<br>');
+                    }
+                    chatBox.appendChild(msgDiv);
+
+                    if (msg.role === 'bot' && !isWelcomeMessage(msg.content)) {
+                        let followups = msg.followups;
+                        if (!followups || !followups.length) {
+                            followups = extractFollowupsFromText(msg.content);
+                        }
+                        if (followups && followups.length) {
+                            appendFollowupButtons(followups);
+                        }
+                    }
+                });
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function renderHistoryList() {
+            const store = getCurrentHistoryStore();
+            const container = document.getElementById('historyListContainer');
+            container.innerHTML = '';
+            const sessions = Object.values(store).sort((a,b)=> new Date(b.createTime) - new Date(a.createTime));
+            if (sessions.length === 0) { container.innerHTML = '<div style="text-align:center; color:#94a3b8; padding:20px;">暂无历史记录</div>'; return; }
+            sessions.forEach(sess => { const itemDiv = document.createElement('div'); itemDiv.className = 'history-item'; const preview = sess.title || (sess.messages.find(m=>m.role==='user')?.content?.substring(0,30) || '无内容');
+                itemDiv.innerHTML = `<div class="history-title"><span>💬 ${preview}</span><span class="history-time">${sess.createTime?.slice(5,16) || ''}</span></div><div class="history-preview">${preview.length>35?preview.slice(0,35)+'...':preview}</div>`;
+                itemDiv.addEventListener('click', () => { if (currentSessionId === sess.id) return; saveCurrentSessionToStore(); currentSessionId = sess.id; renderCurrentSession(); saveAllToLocalStorage(); }); container.appendChild(itemDiv);
+            });
+            const modeTag = document.getElementById('modeTag');
+            if (modeTag) modeTag.innerText = currentMode === 'pro' ? '专业模式' : '普通模式';
+
+            // 同步移动端历史
+            if (typeof fillMobileHistory === 'function') fillMobileHistory();
+        }
+
+        function saveCurrentSessionToStore() {
+            if (!currentSessionId) return;
+            const store = getCurrentHistoryStore();
+            if (!store[currentSessionId]) return;
+            const chatBox = document.getElementById('chatBox');
+            const messages = [];
+            const children = chatBox.querySelectorAll('.msg');
+
+            const existingSession = store[currentSessionId];
+            const existingMessagesMap = new Map();
+            if (existingSession && existingSession.messages) {
+                existingSession.messages.forEach((msg, idx) => {
+                    const key = `${msg.role}_${msg.content}`;
+                    existingMessagesMap.set(key, msg);
+                });
+            }
+
+            for (let child of children) {
+                if (child.classList.contains('msg')) {
+                    const role = child.classList.contains('user') ? 'user' : 'bot';
+                    let content = '';
+                    const cloneDiv = child.cloneNode(true);
+                    const domainTag = cloneDiv.querySelector('.domain-tag');
+                    if (domainTag) domainTag.remove();
+                    content = cloneDiv.innerText.trim();
+
+                    const key = `${role}_${content}`;
+                    const existingMsg = existingMessagesMap.get(key);
+
+                    if (existingMsg) {
+                        messages.push({ ...existingMsg });
+                    } else {
+                        messages.push({ role, content });
+                    }
+                }
+            }
+
+            store[currentSessionId].messages = messages;
+            const lastUser = messages.filter(m=>m.role==='user').pop();
+            if (lastUser) store[currentSessionId].title = lastUser.content.substring(0, 35);
+            saveAllToLocalStorage();
+        }
+
+        function showLoading() { const loadingDiv = document.createElement('div'); loadingDiv.className = 'loading-indicator'; loadingDiv.id = 'aiLoadingMsg'; loadingDiv.innerHTML = '正在回答中... <span class="dot-floating">.</span><span class="dot-floating">.</span><span class="dot-floating">.</span>'; document.getElementById('chatBox').appendChild(loadingDiv); document.getElementById('chatBox').scrollTop = document.getElementById('chatBox').scrollHeight; }
+
+        function hideLoading() { const loader = document.getElementById('aiLoadingMsg'); if (loader) loader.remove(); }
+
+        async function sendMessageToServer(userMsg) {
+            const store = getCurrentHistoryStore(); const session = store[currentSessionId];
+            const contextMessages = session.messages.filter(m => m.role !== 'system').slice(-10).map(m => ({ user: m.role === 'user' ? m.content : '', bot: m.role === 'bot' ? m.content : '' }));
+            const apiEndpoint = currentMode === 'pro' ? '/chat-pro' : '/chat';
+            try {
+                const response = await axios.post(apiEndpoint, { msg: userMsg, context: contextMessages });
+                let botReply = response.data.reply || '抱歉无法回答';
+                botReply = removeAsterisks(botReply);
+                const scene = response.data.scene || 'civil';
+                const followups = extractFollowupsFromText(botReply);
+                const formattedHtml = formatBotReplyWithDomain(botReply, scene);
+                session.messages.push({ role: 'bot', content: botReply, followups: followups, scene: scene, formattedHtml: formattedHtml });
+                saveAllToLocalStorage(); renderCurrentSession(); renderHistoryList();
+            } catch(err) { console.error(err); session.messages.push({ role: 'bot', content: '❌ 服务异常，请稍后再试。', scene: 'civil', formattedHtml: '❌ 服务异常，请稍后再试。' }); saveAllToLocalStorage(); renderCurrentSession(); }
+            finally { hideLoading(); }
+        }
+
+        async function sendMessage() {
+            let msg = userInput.value.trim(); if (!msg) return;
+            userInput.value = '';
+            const store = getCurrentHistoryStore(); const session = store[currentSessionId];
+            session.messages.push({ role: 'user', content: msg });
+            renderCurrentSession();
+            showLoading();
+            await sendMessageToServer(msg);
+        }
+
+        function startNewConversation() { saveCurrentSessionToStore(); const store = getCurrentHistoryStore(); const newId = Date.now().toString(); store[newId] = { id: newId, title: '新对话', createTime: new Date().toLocaleString(), messages: [{ role: 'bot', content: '👋 您好，我是智能法律助手，请问您需要咨询哪方面法律问题？' }] }; currentSessionId = newId; saveAllToLocalStorage(); renderCurrentSession(); renderHistoryList(); }
+
+        function clearCurrentModeHistory() { const newId = Date.now().toString(); const emptyStore = {}; emptyStore[newId] = { id: newId, title: '新对话', createTime: new Date().toLocaleString(), messages: [{ role: 'bot', content: '👋 您好，我是智能法律助手，请问您需要咨询哪方面法律问题？' }] }; if (currentMode === 'pro') proHistorySessions = emptyStore; else normalHistorySessions = emptyStore; currentSessionId = newId; saveAllToLocalStorage(); renderCurrentSession(); renderHistoryList(); }
+
+        function switchMode(mode) {
+            if (currentMode === mode) return;
+            if (currentSessionId) {
+                saveCurrentSessionToStore();
+            }
+            currentMode = mode;
+            const store = getCurrentHistoryStore();
+            if (Object.keys(store).length === 0) {
+                const newId = Date.now().toString();
+                store[newId] = { id: newId, title: '新对话', createTime: new Date().toLocaleString(), messages: [{ role: 'bot', content: '👋 您好，我是智能法律助手，请问您需要咨询哪方面法律问题？' }] };
+                currentSessionId = newId;
+            } else {
+                const lastId = localStorage.getItem(`legal_last_session_${currentMode}`);
+                if (lastId && store[lastId]) currentSessionId = lastId; else currentSessionId = Object.keys(store)[0];
+            }
+            if (currentMode === 'pro') {
+                normalBtn.classList.remove('active');
+                proBtn.classList.add('active');
+                document.getElementById('proPanel').style.display = 'block';
+            } else {
+                normalBtn.classList.add('active');
+                proBtn.classList.remove('active');
+                document.getElementById('proPanel').style.display = 'none';
+            }
+            renderCurrentSession();
+            renderHistoryList();
+            saveAllToLocalStorage();
+        }
+
+        // 文书生成
+        document.getElementById('openDocBtn')?.addEventListener('click', () => { document.getElementById('docPanel').style.display = 'block'; });
+        document.getElementById('closeDocPanel')?.addEventListener('click', () => { document.getElementById('docPanel').style.display = 'none'; document.getElementById('generatedDocPreview').style.display = 'none'; currentGeneratedDoc = ""; currentFilename = ""; document.getElementById('exportDocBtn').disabled = true; });
+        document.getElementById('generateDocBtn')?.addEventListener('click', async () => { const docType = document.getElementById('docTypeSelect').value; const store = getCurrentHistoryStore(); const session = store[currentSessionId]; const context = session.messages.filter(m => m.role !== 'system').slice(-10).map(m => ({ user: m.role === 'user' ? m.content : '', bot: m.role === 'bot' ? m.content : '' })); const lastUserMsg = session.messages.filter(m => m.role === 'user').pop()?.content || ""; const btn = document.getElementById('generateDocBtn'); const originalText = btn.innerText; btn.innerText = '生成中...'; btn.disabled = true; try { const response = await axios.post('/generate-document', { user_msg: lastUserMsg, context: context, doc_type: docType }); if (response.data.success) { currentGeneratedDoc = response.data.document; currentFilename = response.data.filename; const previewDiv = document.getElementById('generatedDocPreview'); previewDiv.innerText = currentGeneratedDoc; previewDiv.style.display = 'block'; document.getElementById('exportDocBtn').disabled = false; } else { alert('生成失败：' + (response.data.error || '未知错误')); } } catch(err) { console.error(err); alert('生成失败，请稍后重试'); } finally { btn.innerText = originalText; btn.disabled = false; } });
+        document.getElementById('exportDocBtn')?.addEventListener('click', async () => { if (!currentGeneratedDoc) { alert('请先生成文书'); return; } const format = confirm('导出为 Word 文档？\n\n确定 → Word 格式\n取消 → 纯文本格式') ? 'docx' : 'txt'; const filename = currentFilename.replace('.txt', format === 'docx' ? '.docx' : '.txt'); try { const response = await axios.post('/export-document', { content: currentGeneratedDoc, filename: filename, format: format }, { responseType: 'blob' }); const url = window.URL.createObjectURL(new Blob([response.data])); const link = document.createElement('a'); link.href = url; link.setAttribute('download', filename); document.body.appendChild(link); link.click(); link.remove(); window.URL.revokeObjectURL(url); alert('下载成功！'); } catch(err) { console.error(err); alert('导出失败'); } });
+
+        // 移动端清空历史按钮
+        const mobileDrawerClearBtn = document.getElementById('mobileDrawerClearBtn');
+        if (mobileDrawerClearBtn) {
+            mobileDrawerClearBtn.addEventListener('click', () => {
+                if (confirm('确定清空当前模式的所有历史记录吗？')) {
+                    clearCurrentModeHistory();
+                    fillMobileHistory();
+                    if (mobileDrawer.classList.contains('open')) toggleDrawer(false);
+                }
+            });
+        }
+
+        const normalBtn = document.getElementById('normalModeBtn');
+        const proBtn = document.getElementById('proModeBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const userInput = document.getElementById('userInput');
+        const clearAllBtn = document.getElementById('clearAllHistoryBtn');
+
+        sendBtn.addEventListener('click', sendMessage);
+        newChatBtn.addEventListener('click', startNewConversation);
+        normalBtn.addEventListener('click', () => switchMode('normal'));
+        proBtn.addEventListener('click', () => switchMode('pro'));
+        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+        clearAllBtn.addEventListener('click', clearCurrentModeHistory);
+
+        document.querySelectorAll('.case-item').forEach(el => { el.addEventListener('click', () => { const q = el.getAttribute('data-question'); if (q) { userInput.value = q; sendMessage(); } }); });
+
+        document.querySelectorAll('.pro-item').forEach(el => { el.addEventListener('click', () => { userInput.value = el.getAttribute('data-text') || el.innerText; }); });
+
+        document.querySelectorAll('.tab-btn').forEach(btn => { btn.addEventListener('click', () => { const target = btn.getAttribute('data-tab'); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active-pane')); if (target === 'cases') document.getElementById('casesPane').classList.add('active-pane'); else document.getElementById('videosPane').classList.add('active-pane'); }); });
+
+        // 初始化
+        loadAllFromStorage();
+        renderCurrentSession();
+        renderHistoryList();
+        if (currentMode === 'pro') document.getElementById('proPanel').style.display = 'block';
+        else document.getElementById('proPanel').style.display = 'none';
+
+        // 初始化移动端组件
+        fillMobileCases();
+        fillMobileVideos();
+        fillMobileHistory();
+        initDrawerCollapse();
+        initMobileBottomNav();
+    </script>
+</body>
+</html>
